@@ -46,3 +46,22 @@ As a player, I want to restart the game so that I can play another round.
 4. The site displays whether the answer is correct or incorrect.
 5. The player's score is updated.
 6. The player can select **Play Again** to restart.
+
+## Page Layout and Design
+
+- **Header:** Displays the game title, “Premier League Top Goalscorer”.
+- **Main content:** Presents the question clearly in the centre of the page.
+- **Answer input:** Allows the player to type a footballer's name.
+- **Submit button:** Lets the player submit their answer.
+- **Feedback area:** Displays whether the answer is correct or incorrect.
+- **Score display:** Shows the player's current score.
+- **Play Again button:** Allows the player to restart the game.
+
+### Design
+
+- Use a simple, clean one-page layout.
+- Centre the game content on the screen.
+- Use a football-inspired colour scheme, such as green, white, and black.
+- Make buttons clear and easy to identify.
+- Use large, readable text for the question and feedback.
+- Ensure the layout works on both desktop and mobile devices.
