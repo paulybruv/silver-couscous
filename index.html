@@ -1,110 +1,256 @@
 <!DOCTYPE html>
+<!-- ==========================================================================
+     INDEX.HTML: Main Document Structure for Premier League Recall
+     --------------------------------------------------------------------------
+     This file builds the visual skeleton of the game.
+     Key Highlights for the Team:
+       1. Bootstrap 5.3 CDN: Gives us ready-to-use grid rows, columns, and modals.
+       2. Accessibility (ARIA): Labels and live regions for screen readers (WCAG AA).
+       3. Performance / Layout Stability: Min-height styles prevent page jitter (CLS).
+       4. Strict Script Loading Order: data.js loads first so script.js has data.
+     ========================================================================== -->
 <html lang="en">
 <head>
-  <!-- Standard website setup: sets text encoding and fits phone screens -->
+  <!-- Standard character encoding so symbols, accents, and emojis display properly -->
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Premier League Recall - Test your top 5 goalscorers knowledge by season.">
-  <title>Premier League Recall | Top 5 Scorers</title>
 
-  <!-- Makes Google/CDN connections faster so styles load quickly -->
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <!-- Mobile Viewport: Scales the webpage to fit phones and tablets correctly -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Premier League Recall</title>
+
+  <!-- External Bootstrap 5.3 CSS: Framework for responsive columns, buttons, and spacing -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
   
-  <!-- Bootstrap 5: Gives us pre-made responsive grid and button styles -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  
-  <!-- Our own custom styles file -->
+  <!-- Our Custom CSS: Controls neon colors, card glows, and glass effects -->
   <link rel="stylesheet" href="assets/css/style.css">
 </head>
-<body class="d-flex flex-column min-vh-100">
 
-  <!-- ==========================================
-       TOP BAR: Game Title and Current Score/Strikes
-       ========================================== -->
-  <header class="py-3 sticky-top">
-    <div class="container d-flex flex-wrap justify-content-between align-items-center gap-3">
+<!-- Body layout uses Bootstrap utility classes:
+     - bg-dark & text-light: Dark mode defaults
+     - min-vh-100: Ensures the page stretches to full viewport height
+     - d-flex flex-column justify-content-between: Pushes the footer down to the very bottom -->
+<body class="bg-dark text-light min-vh-100 d-flex flex-column justify-content-between">
+
+  <!-- ========================================================================
+       1. HEADER & TOP NAVIGATION BAR
+       ------------------------------------------------------------------------
+       Uses a flex row container:
+       - An invisible left spacer balances the 'Rules' button on the right
+       - The game title and subtitle stay centered
+       - The 'Rules' button triggers our popup modal
+       ======================================================================== -->
+  <header class="py-2 py-sm-3 border-bottom border-secondary">
+    <div class="container d-flex align-items-center justify-content-between">
       
-      <!-- Website Name -->
-      <div class="d-flex align-items-center gap-2">
-        <h1 class="h4 mb-0 fw-bold brand-text">Premier League Recall</h1>
-        <span class="badge bg-secondary text-uppercase px-2 py-1 rounded-pill small fw-bold">Top 5</span>
+      <!-- Invisible spacer (desktop only) to keep the center title perfectly centered -->
+      <div class="d-none d-md-block" style="width: 70px;"></div>
+
+      <!-- Main Game Title and Subtitle -->
+      <div class="text-center flex-grow-1 px-2">
+        <h1 class="h4 h3-md fw-bold text-uppercase tracking-wide mb-0 brand-text">Premier League Recall</h1>
+        <p class="text-light-subtle small mb-0">
+          Guess the Top 5 Goalscorers from Random Historical Seasons (1992–2026)
+        </p>
       </div>
 
-      <!-- Live Score Counters (JavaScript updates these numbers while you play) -->
-      <div class="d-flex gap-2 align-items-center">
-        <span class="badge bg-dark border border-secondary badge-status text-info" id="score-tracker">Score: 0</span>
-        <span class="badge bg-dark border border-danger badge-status text-danger" id="strikes-tracker">Strikes: 0/3</span>
+      <!-- Top Right Rules Button:
+           - data-bs-toggle="modal" & data-bs-target="#rulesModal" tell Bootstrap
+             to pop open the matching rules window when clicked -->
+      <div>
+        <button 
+          type="button" 
+          class="btn btn-sm btn-outline-info rounded-pill fw-bold text-nowrap"
+          data-bs-toggle="modal" 
+          data-bs-target="#rulesModal"
+          aria-label="View game rules and tie-breaker explanation">
+          Rules ℹ️
+        </button>
       </div>
+
     </div>
   </header>
 
-  <!-- ==========================================
-       MAIN SCREEN: Where the game happens
-       ========================================== -->
+  <!-- ========================================================================
+       2. MAIN INTERACTIVE GAMEPLAY AREA
+       ------------------------------------------------------------------------
+       Contains the score dashboard, season prompt, input form, and card grid.
+       my-auto centers this block vertically in the available space.
+       ======================================================================== -->
   <main class="container my-auto py-4">
     
-    <!-- Which season you are guessing (e.g. 2011-12) -->
-    <section class="text-center mb-4">
-      <h2 id="season-heading" class="display-4 fw-bold text-white mb-1">Loading...</h2>
-      <p class="text-light-subtle mb-0">Can you name the top 5 goalscorers from this season?</p>
+    <!-- DASHBOARD: Shows Score, Strikes, and Round Number -->
+    <section class="row justify-content-center mb-4" aria-label="Game Stats Dashboard">
+      <div class="col-12 col-md-8 col-lg-6">
+        <div class="card bg-black border-secondary p-3 shadow-sm">
+          <div class="d-flex justify-content-around align-items-center text-center">
+            
+            <!-- Current Score Display (Updated dynamically by script.js) -->
+            <div>
+              <span class="text-uppercase small text-secondary d-block">Score</span>
+              <span id="current-score" class="fs-4 fw-bold text-success">0</span>
+            </div>
+
+            <!-- Bootstrap vertical divider line -->
+            <div class="vr bg-secondary"></div>
+
+            <!-- Strikes Counter (0 to 3 strikes) -->
+            <div>
+              <span class="text-uppercase small text-secondary d-block">Strikes</span>
+              <span id="strike-display" class="fs-4 fw-bold text-danger">0 / 3</span>
+            </div>
+
+            <!-- Bootstrap vertical divider line -->
+            <div class="vr bg-secondary"></div>
+
+            <!-- Round Counter (Increments after each completed season) -->
+            <div>
+              <span class="text-uppercase small text-secondary d-block">Round</span>
+              <span id="round-counter" class="fs-4 fw-bold text-info">1</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
     </section>
 
-    <!-- The Box Where You Type Your Answer -->
-    <section class="row justify-content-center mb-4">
+    <!-- SEASON HEADING:
+         PERFORMANCE TIP: min-height: 52px reserves space so the screen doesn't
+         jump down (Cumulative Layout Shift) when JavaScript inserts the season text. -->
+    <section class="text-center mb-4" id="season-heading" style="min-height: 52px;">
+      <h2 id="season-text" class="h2 fw-bolder text-light mb-0">Loading Season...</h2>
+    </section>
+
+    <!-- GUESS INPUT FORM:
+         The text box and submit button where players enter surnames -->
+    <section class="row justify-content-center mb-4" aria-label="Player Guess Input Area">
       <div class="col-12 col-md-8 col-lg-6">
-        <form id="guess-form" class="card form-glass p-3 border-0" novalidate>
-          <label for="player-guess" class="form-label text-light-subtle small fw-bold">
-            Enter Player Surname or Full Name
-          </label>
+        <form id="guess-form" class="d-flex gap-2">
           
-          <div class="input-group">
-            <!-- Text input for typing a player name -->
-            <input 
-              type="text" 
-              id="player-guess" 
-              class="form-control form-control-lg form-control-custom" 
-              placeholder="e.g., Henry, Shearer, Kane" 
-              autocomplete="off"
-              required>
-            <!-- Submit button -->
-            <button class="btn btn-action-submit px-4" type="submit" id="submit-btn">Submit</button>
-          </div>
+          <!-- Screen reader only label for WCAG AA compliance (invisible on screen) -->
+          <label for="guess-input" class="visually-hidden">Enter player surname or full name</label>
           
-          <!-- Message text showing "Correct!", "Already guessed", or "Wrong" -->
-          <div id="feedback-message" class="mt-2 small fw-medium" role="alert" aria-live="polite"></div>
+          <!-- Text input: autocomplete="off" stops browser dropdowns from blocking the cards -->
+          <input 
+            type="text" 
+            id="guess-input" 
+            class="form-control form-control-lg bg-dark text-light border-secondary" 
+            placeholder="Type player surname..." 
+            autocomplete="off" 
+            required>
+          
+          <button type="submit" id="submit-guess-btn" class="btn btn-primary px-4 fw-semibold">Guess</button>
         </form>
       </div>
     </section>
 
-    <!-- The 5 Blank Cards (JavaScript creates the cards inside this div) -->
-    <section aria-label="Top 5 Goal Scorers Board">
-      <div class="row g-3 justify-content-center" id="slots-container"></div>
+    <!-- LIVE REGION FEEDBACK BOX:
+         ACCESSIBILITY (ARIA):
+         - role="alert" & aria-live="polite" inform screen readers whenever a correct
+           guess, strike, or warning occurs without interrupting the user.
+         - min-height: 48px prevents layout shifting when messages show/hide. -->
+    <section class="row justify-content-center mb-4">
+      <div class="col-12 col-md-8 col-lg-6" style="min-height: 48px;">
+        <div id="feedback-message" class="alert alert-dark text-center py-2 mb-0 d-none" role="alert" aria-live="polite"></div>
+      </div>
     </section>
 
-    <!-- Bottom Buttons: Give up or go to the next round -->
-    <section class="text-center mt-4">
-      <!-- Clicking this gives up and shows whoever you missed -->
-      <button id="give-up-btn" type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3 me-2">
-        Reveal Remaining
-      </button>
-      
-      <!-- This button appears only after the round finishes -->
-      <button id="next-season-btn" type="button" class="btn btn-success fw-bold rounded-pill px-4 d-none">
-        Next Season &rarr;
-      </button>
+    <!-- DYNAMIC 5-CARD GRID:
+         - JavaScript (script.js) injects all 5 player cards inside this container.
+         - min-height: 340px ensures space is held so the footer stays in place. -->
+    <section class="row justify-content-center g-3" id="slots-container" style="min-height: 340px;" aria-label="Top 5 Goalscorer Cards">
+      <!-- 5 Card Slots dynamically injected by script.js -->
     </section>
+
+    <!-- ACTION BUTTONS: Next Round / Reveal All controls -->
+    <section class="row justify-content-center mt-4">
+      <div class="col-12 text-center">
+        <button id="next-round-btn" class="btn btn-outline-info px-4 py-2 fw-semibold d-none">Next Season</button>
+      </div>
+    </section>
+
   </main>
 
-  <!-- ==========================================
-       FOOTER: Bottom copyright bar
-       ========================================== -->
-  <footer class="mt-auto py-3 bg-black text-center text-muted small border-top border-secondary">
+  <!-- ========================================================================
+       3. FOOTER
+       ------------------------------------------------------------------------
+       Fixed subtle attribution and copyright at the bottom of the viewport.
+       ======================================================================== -->
+  <footer class="py-3 border-top border-secondary text-center text-secondary small">
     <div class="container">
-      Premier League Recall &copy; 2026. Built with Vanilla JavaScript.
+      Premier League Recall &copy; 2026 &bull; Historical Data Sourced via Wikipedia Archives
     </div>
   </footer>
+  
+  <!-- ========================================================================
+       4. RULES & TIE-BREAKER POPUP MODAL
+       ------------------------------------------------------------------------
+       Hidden by default; opens over the screen when the 'Rules ℹ️' button is clicked.
+       Contains the full scoring breakdown and the Card #5 tie-break explanation.
+       ======================================================================== -->
+  <div class="modal fade" id="rulesModal" tabindex="-1" aria-labelledby="rulesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-light border border-secondary shadow-lg" style="background: #0f172a !important;">
+        
+        <!-- Modal Header -->
+        <div class="modal-header border-bottom border-secondary">
+          <h2 class="modal-title h5 fw-bold brand-text" id="rulesModalLabel">How to Play & Rules</h2>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        
+        <!-- Modal Content Body -->
+        <div class="modal-body text-start small">
+          <h6 class="fw-bold text-info text-uppercase mb-2">🎯 Objective</h6>
+          <p class="text-light-subtle">
+            Name the top 5 Premier League goalscorers for the displayed season. You get <strong>10 points</strong> per correct guess, or <strong>5 points</strong> if you used a hint. Sweep all 5 cards for a <strong>+25 point bonus</strong>!
+          </p>
 
-  <!-- Link the two JavaScript files at the very bottom so HTML loads first -->
+          <hr class="border-secondary opacity-50 my-3">
+
+          <h6 class="fw-bold text-info text-uppercase mb-2">⚠️ Strikes & Hints</h6>
+          <ul class="text-light-subtle ps-3 mb-0">
+            <li>You are allowed up to <strong>3 strikes</strong> per round.</li>
+            <li>Typing a duplicate incorrect guess will not cost an extra strike.</li>
+            <li>Pressing <strong>Hint</strong> reveals the player's club(s) at the cost of half points.</li>
+          </ul>
+
+          <hr class="border-secondary opacity-50 my-3">
+
+          <h6 class="fw-bold text-info text-uppercase mb-2">🤝 The Tie-Breaker System</h6>
+          <p class="text-light-subtle mb-2">
+            Historical Premier League seasons often feature players tied on goals. Here is how cards are awarded:
+          </p>
+          <ul class="text-light-subtle ps-3 mb-0">
+            <li class="mb-2">
+              <strong>Tied for Ranks 1 to 4:</strong> All tied players receive their <em>own distinct card</em> with their own individual club hint.
+            </li>
+            <li>
+              <strong>Tied for Card #5:</strong> When multiple players tie for the final 5th position, they <em>share Card #5</em>. Hitting hint reveals all eligible clubs, and <strong>guessing any one of the tied players</strong> successfully claims the card with their name!
+            </li>
+          </ul>
+        </div>
+        
+        <!-- Modal Footer: Close Button -->
+        <div class="modal-footer border-top border-secondary">
+          <button type="button" class="btn btn-sm btn-primary fw-semibold px-3" data-bs-dismiss="modal">Got It</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       5. JAVASCRIPT IMPORTS
+       ------------------------------------------------------------------------
+       EXECUTION ORDER MATTERS (LO6.2):
+       1. Bootstrap JS: Enables the modal popup animations and close events.
+       2. data.js: Loads our 34 historical seasons into memory FIRST.
+       3. script.js: Reads the data, handles user inputs, and runs game logic.
+       ======================================================================== -->
+  <!-- Bootstrap 5 JS Bundle (Required for modal popups) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+  <!-- Scripts: data.js MUST load before script.js -->
   <script src="assets/js/data.js"></script>
   <script src="assets/js/script.js"></script>
 </body>

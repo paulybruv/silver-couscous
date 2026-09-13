@@ -1,67 +1,120 @@
 /* ==========================================================================
-   STYLE.CSS: Controls all colors, sizing, cards, and phone responsiveness
+   STYLE.CSS: Master Styling Sheet for Premier League Recall
+   --------------------------------------------------------------------------
+   This file controls the entire visual design of the game.
+   It covers:
+     1. Color Palette (CSS Variables)
+     2. Page Background & Glow Effects
+     3. Header, Title Gradient, and Rules Button
+     4. Guess Input Bar & Submit Button
+     5. Player Card States (Hidden, Guessed Correctly, Missed)
+     6. Mobile Responsiveness (Small screen layout adjustments)
    ========================================================================== */
 
-/* 1. Global Color Palette (Change a color here to change it everywhere) */
-:root {
-  --bg-main: #0a0e17;                 /* Very dark blue page background */
-  --bg-card: rgba(19, 26, 42, 0.85);  /* Semi-transparent dark card background */
-  --bg-card-border: rgba(255, 255, 255, 0.12); /* Subtle card outline */
-  --accent-cyan: #00ff87;             /* Bright Premier League neon green */
-  --accent-gold: #ffbe0b;             /* Warning / Hint color */
-  --accent-red: #ff3366;              /* Strike / Wrong answer red */
-  --text-main: #f8fafc;               /* Clean white text */
-  --text-muted: #cbd5e1;              /* Easy-to-read light gray for subtitles */
 
-  /* Colors for player cards */
-  --slot-bg-hidden: rgba(15, 23, 42, 0.85);   /* Dark card before being guessed */
-  --slot-bg-revealed: rgba(0, 255, 135, 0.15);/* Light green card when correct */
-  --slot-border-revealed: #00ff87;             /* Neon green outline */
-  --slot-bg-missed: rgba(255, 51, 102, 0.2);  /* Light red card when missed */
-  --slot-border-missed: #ff3366;              /* Red outline */
+/* ==========================================================================
+   1. GLOBAL COLOR PALETTE (CSS Variables / Custom Properties)
+   --------------------------------------------------------------------------
+   Think of :root like a list of paint cans at the top of our project.
+   Instead of writing raw hex codes (#00ff87) dozens of times, we store them
+   in variables starting with "--". If we ever want to change a color later,
+   we only need to change it right here, and the entire website updates!
+   ========================================================================== */
+:root {
+  /* Main page backgrounds */
+  --bg-main: #0a0e17;                 /* Deep, dark navy blue background for the body */
+  --bg-card: rgba(19, 26, 42, 0.85);  /* Semi-transparent dark card background (85% solid) */
+  --bg-card-border: rgba(255, 255, 255, 0.12); /* Subtle faint white outline for glass cards */
+
+  /* Highlight & status accent colors */
+  --accent-cyan: #00ff87;             /* Iconic neon green/cyan (Premier League brand theme) */
+  --accent-gold: #ffbe0b;             /* Warm yellow/gold for hints and reminders */
+  --accent-red: #ff3366;              /* Bright punchy red for strikes and wrong guesses */
+
+  /* General text colors */
+  --text-main: #f8fafc;               /* Clean, crisp off-white for primary text */
+  --text-muted: #cbd5e1;              /* Soft light gray for subtitles and secondary details */
+
+  /* Card state colors (how player cards look before, during, and after guesses) */
+  --slot-bg-hidden: rgba(15, 23, 42, 0.85);    /* Dark slate background before a card is guessed */
+  --slot-bg-revealed: rgba(0, 255, 135, 0.15); /* Light neon-green tint when player is found */
+  --slot-border-revealed: #00ff87;             /* Solid neon-green border for winning cards */
+  --slot-bg-missed: rgba(255, 51, 102, 0.2);   /* Light red tint when a card wasn't guessed */
+  --slot-border-missed: #ff3366;               /* Solid red border for cards revealed by strike-out */
 }
 
-/* 2. Main Page Background */
+
+/* ==========================================================================
+   2. MAIN PAGE BACKGROUND & BASE SETUP
+   --------------------------------------------------------------------------
+   Sets up the whole browser window styling.
+   ========================================================================== */
 body {
+  /* System font fallback stack: uses the cleanest default font on any device (Apple, Windows, Android) */
   font-family: system-ui, -apple-system, sans-serif;
+  
+  /* Fallback solid background color */
   background-color: var(--bg-main);
-  /* Two smooth glow circles in opposite corners */
+
+  /* Creates two modern ambient glowing light circles in opposite corners:
+     - Top-left: subtle purple glow
+     - Bottom-right: soft Premier League neon green glow */
   background-image: 
     radial-gradient(at 10% 10%, rgba(56, 0, 60, 0.5) 0px, transparent 50%),
     radial-gradient(at 90% 90%, rgba(0, 255, 135, 0.15) 0px, transparent 50%);
+
+  /* Keeps the glowing circles stationary in the background even if the page scrolls */
   background-attachment: fixed;
+
+  /* Sets default text color across all paragraphs and headings */
   color: var(--text-main);
+
+  /* Ensures the body stretches to take up at least 100% of the screen's height */
   min-height: 100vh;
 }
 
-/* 3. Header and Text Styling */
+
+/* ==========================================================================
+   3. HEADER & TEXT STYLING
+   --------------------------------------------------------------------------
+   Controls the top navigation bar, title gradients, and score badges.
+   ========================================================================== */
 header {
+  /* Semi-transparent dark header */
   background: rgba(10, 14, 23, 0.95);
+
+  /* Frosted-glass blur effect: blurs whatever scrolls underneath the header */
   backdrop-filter: blur(12px);
+
+  /* Subtle border on the bottom of the header to separate it from the game area */
   border-bottom: 1px solid var(--bg-card-border);
 }
 
-/* Gives the title a neon green-to-cyan gradient text effect */
+/* Gives the main title words a modern gradient color wash (Green fading into Cyan) */
 .brand-text {
   background: linear-gradient(135deg, #00ff87 0%, #60efff 100%);
+  
+  /* These two lines clip the gradient so it fills ONLY the letters, not the box */
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
-/* Light subtitle color so it's easy to read against dark backgrounds */
+/* Helper class to guarantee subtitles stay easy to read on dark mode */
 .text-light-subtle {
   color: #cbd5e1 !important;
 }
 
-/* Score and Strike pill badges */
+/* Rounded status pill badges (used for Score, Strikes, and Round display) */
 .badge-status {
   font-size: 0.85rem;
   font-weight: 700;
   padding: 0.45rem 0.85rem;
-  border-radius: 50px;
+  border-radius: 50px; /* High radius creates a smooth rounded pill shape */
 }
 
-/* Holds exact space for the season title so the page doesn't jump on load */
+/* PERFORMANCE TIP (Prevents Layout Shift / CLS):
+   By reserving a fixed 58px minimum height for the season title, the screen
+   will NEVER jump or jitter when JavaScript finishes loading the season text. */
 #season-heading {
   min-height: 58px;
   display: flex;
@@ -69,99 +122,132 @@ header {
   justify-content: center;
 }
 
-/* 4. The Guess Input Box */
+
+/* ==========================================================================
+   4. THE GUESS INPUT BOX & SUBMIT BUTTON
+   --------------------------------------------------------------------------
+   Controls the frosted-glass text input bar where the user types player names.
+   ========================================================================== */
+
+/* The outer frosted-glass container card that holds the input field */
 .form-glass {
   background: var(--bg-card);
   border: 1px solid var(--bg-card-border);
   border-radius: 1.25rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); /* Soft shadow underneath for depth */
 }
 
+/* The actual text input where the user types */
 .form-control-custom {
   background-color: rgba(10, 14, 23, 0.9) !important;
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
   color: #ffffff !important;
+  /* Rounds only the left corners so it attaches smoothly to the button on the right */
   border-radius: 0.75rem 0 0 0.75rem;
 }
 
-/* Neon outline when clicking inside the input box */
+/* Accessibility Focus Ring: When the user clicks or tabs into the input field,
+   it lights up with a subtle neon green glow so they know it is active */
 .form-control-custom:focus {
   border-color: var(--accent-cyan) !important;
   box-shadow: 0 0 0 0.25rem rgba(0, 255, 135, 0.2) !important;
 }
 
-/* The Submit Button */
+/* The 'Guess' Submit Button */
 .btn-action-submit {
+  /* Bright gradient fill matching the Premier League green/cyan palette */
   background: linear-gradient(135deg, #00ff87 0%, #00b4d8 100%);
-  color: #0a0e17;
+  color: #0a0e17;     /* Dark navy text for high contrast on the bright button */
   font-weight: 700;
   border: none;
+  /* Rounds only the right corners so it locks seamlessly onto the input field */
   border-radius: 0 0.75rem 0.75rem 0;
 }
 
-/* 5. The 5 Player Cards */
-/* Saves room on screen so cards don't pop down unexpectedly */
+
+/* ==========================================================================
+   5. THE 5 PLAYER CARDS (Game Grid)
+   --------------------------------------------------------------------------
+   Controls the 5 goalscorer cards and how they transition between states:
+   - Hidden State (unsolved)
+   - Revealed State (correct guess)
+   - Missed State (round over / revealed automatically)
+   ========================================================================== */
+
+/* Reserves height for the cards row so the footer doesn't snap down when loaded */
 #slots-container {
   min-height: 240px;
 }
 
-/* Base Card (Before you guess it) */
+/* Base Card State (Default view before a player has been guessed) */
 .slot-card {
   min-height: 105px;
   background-color: var(--slot-bg-hidden);
   border: 1px solid var(--bg-card-border);
   border-radius: 1rem;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+  /* Smooth animation so the card floats up gently when solved */
   transition: transform 0.25s ease;
 }
 
-/* Correct Guess: Turns green with a neon glow */
+/* Correct Guess State: Added by JavaScript when a player name is guessed right */
 .slot-card.revealed {
   background-color: var(--slot-bg-revealed);
   border: 1.5px solid var(--slot-border-revealed);
-  box-shadow: 0 0 20px rgba(0, 255, 135, 0.25);
-  transform: translateY(-2px);
+  box-shadow: 0 0 20px rgba(0, 255, 135, 0.25); /* Glowing green neon halo */
+  transform: translateY(-2px);                  /* Floats up slightly */
 }
 
-/* Missed Card: Turns red when round ends */
+/* Missed State: Added by JavaScript if a player strikes out 3 times */
 .slot-card.missed {
   background-color: var(--slot-bg-missed);
-  border: 1.5px solid var(--slot-border-missed);
+  border: 1.5px solid var(--slot-border-missed); /* Solid red border */
 }
 
-/* The round number circle (#1, #2, etc.) */
+/* The rank badge circle in the top corner of each card (#1, #2, #3, #4, #5) */
 .rank-badge {
   width: 42px;
   height: 42px;
-  min-width: 42px;
+  min-width: 42px;    /* Prevents the circle from squishing on small mobile screens */
   font-size: 1.1rem;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: var(--accent-cyan);
 }
 
+/* When solved correctly: Badge circle fills solid neon green with dark text */
 .slot-card.revealed .rank-badge {
   background: var(--accent-cyan);
   color: #0a0e17;
 }
 
+/* When missed: Badge circle fills red with crisp white text */
 .slot-card.missed .rank-badge {
   background: var(--accent-red);
   color: #ffffff;
 }
 
-/* Message feedback colors */
-.feedback-error { color: var(--accent-red); }
-.feedback-success { color: var(--accent-cyan); }
-.feedback-warning { color: var(--accent-gold); }
+/* Dynamic Live Region Feedback Colors (Injected by script.js) */
+.feedback-error   { color: var(--accent-red); }   /* Red text for strikes */
+.feedback-success { color: var(--accent-cyan); }  /* Neon green text for correct guesses */
+.feedback-warning { color: var(--accent-gold); }  /* Yellow text for hints & repeat guesses */
 
-/* 6. Phone Settings (Screen smaller than 576px) */
+
+/* ==========================================================================
+   6. PHONE & MOBILE SETTINGS (Screens narrower than 576px wide)
+   --------------------------------------------------------------------------
+   When someone views the game on a smartphone (iPhone, Samsung Galaxy, etc.),
+   these rules trigger automatically so cards fit comfortably without
+   horizontal scrolling.
+   ========================================================================== */
 @media (max-width: 576px) {
+  /* Slightly reduces card padding and height so all 5 cards fit nicely */
   .slot-card {
     min-height: 90px;
     padding: 0.75rem !important;
   }
 
+  /* Scales the rank badge circle down slightly so text has more breathing room */
   .rank-badge {
     width: 36px;
     height: 36px;
@@ -169,4 +255,10 @@ header {
     font-size: 0.95rem;
     margin-right: 0.75rem !important;
   }
+}
+
+/* Compact sizing for the 'Rules' modal button in the top right header */
+header .btn-outline-info {
+  font-size: 0.8rem;
+  padding: 0.3rem 0.75rem;
 }
