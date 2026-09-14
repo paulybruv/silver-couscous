@@ -36,36 +36,39 @@ A football fan uses the game as a quick memory exercise for seasons such as 2011
 
 The app is designed to be responsive, so it can be played on a laptop, tablet, or mobile phone without needing a separate version for each device.
 
-## How Our Team Used AI in This Project 
+## How Our Team Used AI in This Project
 
-As a team of beginner developers, we used AI as a patient pair-programmer and interactive tutor rather than just a code generator. It helped us turn our initial game idea into a working single-page application, guided us through tricky JavaScript logic, and kept us from getting bogged down in repetitive setup so we could focus on learning and building features together.
+As beginner developers, we used AI as a coding assistant and interactive tutor rather than letting it write the project for us. It helped us turn our game idea into a functional single-page app, walked us through confusing JavaScript bugs, and explained the logic behind the code so we could learn while building together.
 
 ---
 
 ### 1. Helping Us Build the Project
-* **Structuring the 33-Season Dataset:** Manually researching and typing out 33 seasons of football statistics would have taken days and led to typos[cite: 2]. We used AI to help structure all 33 Premier League campaigns into clean JavaScript objects inside `data.js`, standardising fields for ranks, goals, clubs, and common nicknames (like "RVP" or "Mo Salah")[cite: 2].
-* **Setting Up the Game Engine:** We agreed on our core rules (guess 5 players, allow 3 strikes, deduct points for hints), but connecting all the moving parts across the DOM was a challenge[cite: 4]. We prompted AI with our specific rules, and it helped us assemble the starting game loop in `script.js`—from dynamically rendering the 5 blank cards to validating inputs and calculating scores[cite: 4].
+* **Building the 34-Season Data List:** Researching and typing out 34 seasons of Premier League top scorers by hand would have taken days and led to typos. We used AI to help format every season from 1992 to 2026 into clean JavaScript objects inside `data.js`. It also helped us add common player nicknames (like "RVP" or "Mo Salah") so the game recognizes how football fans actually refer to players.
+* **Setting Up the Game Loop:** We knew our core rules—guess 5 players, allow 3 strikes, and deduct half points if you use a club hint. But connecting all that logic across the DOM was a challenge. We asked AI how to structure the basic game loop in `script.js`, from showing the blank cards on the screen to checking guesses and updating the score.
 
 ---
 
-### 2. Solving Bugs & Learning as a Team
-* **Handling Accents & Foreign Names:** During manual testing, names like **Ole Gunnar Solskjær** and **Sadio Mané** triggered false strikes whenever we typed standard English letters ("Solskjaer", "Mane")[cite: 2, 4]. AI taught our team how to use `.normalize("NFD")` to strip diacritics from both the user's input and our stored dataset, ensuring fair matching without cluttering our arrays[cite: 4].
-* **Preventing Accidental Double Strikes:** Early on, guessing the same wrong name twice cost two separate strikes. AI showed us how to implement a `Set` (`guessedSubmissions`) to track previous entries and output a friendly warning message instead of unfairly penalising the player[cite: 4].
-* **Debugging the "Loading..." Startup Error:** When we first ran the project locally, the card slots failed to render and the heading stayed frozen on "Loading..."[cite: 1, 4]. AI guided us to check the browser developer console, where we spotted a `ReferenceError` caused by `script.js` loading before `data.js`[cite: 1, 4]. Reordering the script tags in `index.html` solved the bug immediately[cite: 1].
+### 2. Fixing Bugs & Learning Along the Way
+* **Sorting Out Ties and 6th-Place Players:** While testing seasons like 1995–96 and 2024–25, we noticed a big issue where players who finished in 6th place were showing up on the cards. For example, Teddy Sheringham finished 6th in 95–96 because two players tied for 4th above him. We used AI to help us check the actual tables for all 34 seasons so only true Top 5 players made it into the game.
+* **Making Card #5 Work for Tied Players:** Our team decided that if players tie inside the top 4, they each get their own card. But if players tie for the final 5th spot, they should share Card #5. AI showed us how to use `isTied: true` and a small list of options inside `data.js`, so if a user types either player who tied for 5th, the game accepts it and reveals their name on that card.
+* **Fixing Accented Letters in Names:** When testing names like **Ole Gunnar Solskjær** or **Sadio Mané**, the game gave us a strike if we typed "Solskjaer" or "Mane" with standard letters. AI taught us how to use `.normalize("NFD")` in our sanitize function. This strips off the accent marks before checking the answer, making the game fair and forgiving.
+* **Stopping Double Strikes on the Same Wrong Guess:** At first, if you accidentally typed the same wrong name twice, the game took two of your three strikes. AI showed us how to use a JavaScript `Set` to store wrong guesses, so the game can spot repeats and just show a warning message instead of taking another life.
+* **Fixing the "Loading..." Bug on Startup:** When we first opened our game, the cards were completely missing and the screen was stuck on "Loading...". AI told us to look in the browser console, where we saw an error showing `script.js` was trying to run before `data.js` had even loaded. Swapping the order of our `<script>` tags in `index.html` fixed it straight away.
 
 ---
 
-### 3. Improving Layout & User Experience 
-* **Eliminating Cumulative Layout Shift (CLS):** When cards rendered or feedback messages popped up, the bottom half of the screen would visibly jump. AI explained layout shifts to us and suggested adding explicit `min-height` reservations to `#season-heading` and `#slots-container` in `style.css` so the page remains steady on both desktop and mobile.
-* **Accessible Contrast Checking:** Our original grey subtitles on dark cards were difficult to read. AI helped us review our palette and recommended switching to `#cbd5e1`, bringing our text-to-background contrast well above the 4.5:1 WCAG AA benchmark.
-* **Screen Reader Feedback:** AI guided us in adding `role="alert"` and `aria-live="polite"` to our feedback container in `index.html`[cite: 1]. This ensures screen-reader users hear dynamic updates after each guess without needing a full page reload[cite: 1, 4].
+### 3. Improving How the Game Looks and Plays
+* **Adding the Rules Popup:** We wanted a simple way for players to check how the game works and how the 5th-card tie-breaker works without cluttering the main screen. AI helped us add a clean "Rules ℹ️" button in the top corner that opens a Bootstrap modal window explaining everything clearly.
+* **Fixing Header Overlap on Mobile:** When testing on narrow phone screens, the Rules button ended up colliding with our subtitle text. Instead of hiding the subtitle, I resolved the layout issue myself by adjusting the styling and flex alignment so the text wraps naturally underneath, giving both the title and the Rules button dedicated breathing room without clipping any information.
+* **Stopping the Page From Jumping Around:** When cards appeared or feedback messages popped up, the bottom half of the screen would jump down awkwardly. AI explained that this happens when elements don't have reserved space, and suggested adding `min-height` to our card container and heading in CSS so the screen stays completely still.
+* **Making It Friendly for Screen Readers:** AI guided us on adding `role="alert"` and `aria-live="polite"` to our message box. This means people using screen-reading software can hear whether their guess was right or wrong without needing to refresh the page.
 
 ---
 
-### 4. Team Workflow & What We Learned 
-* **Understanding New Concepts:** We made a point not to paste code blindly. When AI introduced the **Fisher-Yates shuffle**, we asked it to explain the math[cite: 4]. Learning how it simulates drawing slips from a hat helped us understand why it prevents repeated seasons better than a simple `.sort()`[cite: 4].
-* **Separating Data from Game Logic:** AI recommended separating our data into `data.js` and our engine into `script.js` right from the start[cite: 1, 2, 4]. This kept the project organised and allowed us to divide tasks cleanly—one person could refine dataset aliases while others focused on CSS styling and game features without creating git merge conflicts[cite: 2, 4].
-* **Supporting Our Git Workflow:** Using AI to help structure clear commit messages and review pull requests gave our team confidence in managing our feature branches, ensuring we could collaborate effectively and hit all of our project goals.
+### 4. What We Learned as a Team
+* **Understanding the Code Before Using It:** We made a point never to copy and paste code without understanding what it did. When AI suggested the **Fisher-Yates shuffle** to randomize seasons, we asked it to explain how the math worked so we understood why it prevents repeat seasons better than simple random sorting.
+* **Splitting Data and Game Logic:** AI advised us from the start to keep our season info in `data.js` and our game code in `script.js`. This kept our workspace neat and made it much easier for team members to work on styling, aliases, or testing without getting in each other's way.
+* **Better Team Habits:** Asking AI how to structure clear Git commit messages gave our team more confidence when working on branches and pushing updates together.
 
 ## Basic wireframes
 

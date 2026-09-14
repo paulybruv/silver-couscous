@@ -1,323 +1,396 @@
-// ==============================================================================
-// SCRIPT.JS: The Game Engine
-// Controls: Starting rounds, checking guesses, scoring, hints, and strikes.
-// ==============================================================================
+// ==========================================================================
+// SCRIPT.JS: Master Game Engine for Premier League Recall
+// --------------------------------------------------------------------------
+// This file controls all interactive logic:
+//   1. DOM Content Loaded & State Initialization
+//   2. Fisher-Yates Random Shuffling (No repeat seasons until all are played)
+//   3. Text Normalization (Handles accents like 'Solskjær' & 'Agüero')
+//   4. Dynamic Card Creation & Insertion into the HTML Grid
+//   5. Guess Validation & Dynamic Tie Claiming (Card #5 logic)
+//   6. Scoring, Strikes (Sets), Hints, and Round End Transitions
+// ==========================================================================
 
-// ------------------------------------------------------------------------------
-// 1. GRAB HTML ELEMENTS
-// Saves elements into variables so JavaScript can read and change them easily.
-// ------------------------------------------------------------------------------
-const seasonHeading = document.getElementById("season-heading");     // Title showing the season (e.g. 2011-12)
-const slotsContainer = document.getElementById("slots-container");   // Box where the 5 cards live
-const guessForm = document.getElementById("guess-form");             // The guess input form
-const playerGuessInput = document.getElementById("player-guess");    // The text input box
-const submitBtn = document.getElementById("submit-btn");             // The submit button
-const feedbackMessage = document.getElementById("feedback-message"); // Text message below the form
-const scoreTracker = document.getElementById("score-tracker");       // Score badge in header
-const strikesTracker = document.getElementById("strikes-tracker");   // Strikes badge in header
-const giveUpBtn = document.getElementById("give-up-btn");             // "Reveal Remaining" button
-const nextSeasonBtn = document.getElementById("next-season-btn");     // "Next Season" button
+document.addEventListener("DOMContentLoaded", () => {
+  // ------------------------------------------------------------------------
+  // 1. STATE MANAGEMENT (The Variables Tracking Game Progress)
+  // ------------------------------------------------------------------------
+  let seasonQueue = [];       // Holds shuffled seasons waiting to be played
+  let currentSeason = null;   // The specific season object active right now
+  let activeSlots = [];       // Mutable copy of the 5 cards for the current round
+  let score = 0;              // Total running player score
+  let strikes = new Set();    // Set of unique wrong guesses (prevents duplicate strikes)
+  let roundNumber = 1;        // Current round counter
+  const MAX_STRIKES = 3;      // Strike allowance per round before game over
 
-// ------------------------------------------------------------------------------
-// 2. GAME STATE (Keeps score and round numbers)
-// ------------------------------------------------------------------------------
-let currentRound = null;           // Holds data for the season currently being played
-let currentScore = 0;              // Total game score
-let strikes = 0;                   // Number of wrong guesses this round (0, 1, 2, or 3)
-const MAX_STRIKES = 3;             // 3 strikes and the round is over!
+  // ------------------------------------------------------------------------
+  // 2. DOM ELEMENT SELECTORS (Caching HTML Elements for Fast Access)
+  // ------------------------------------------------------------------------
+  const scoreDisplay = document.getElementById("current-score");
+  const strikeDisplay = document.getElementById("strike-display");
+  const roundDisplay = document.getElementById("round-counter");
+  const seasonText = document.getElementById("season-text");
+  const guessForm = document.getElementById("guess-form");
+  const guessInput = document.getElementById("guess-input");
+  const submitBtn = document.getElementById("submit-guess-btn");
+  const feedbackMsg = document.getElementById("feedback-message");
+  const slotsContainer = document.getElementById("slots-container");
+  const nextRoundBtn = document.getElementById("next-round-btn");
 
-// "Sets" are lists that prevent duplicates automatically
-const revealedIndices = new Set();    // Tracks which of the 5 cards have been guessed (0 to 4)
-const guessedSubmissions = new Set();  // Tracks every name you've already typed this round
-const hintedIndices = new Set();      // Tracks cards where the player clicked "Club Hint"
-let unplayedIndices = [];             // Deck of season numbers so we never repeat the same season
-
-// ------------------------------------------------------------------------------
-// 3. HELPER TOOLS (Shuffling & Cleaning Text)
-// ------------------------------------------------------------------------------
-
-// Shuffles an array randomly (like shuffling a deck of cards)
-function shuffle(array) {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
+  // Dynamically ensure the "Reveal All" button exists right next to the "Next Season" button
+  let revealAllBtn = document.getElementById("reveal-all-btn");
+  if (!revealAllBtn && nextRoundBtn) {
+    revealAllBtn = document.createElement("button");
+    revealAllBtn.id = "reveal-all-btn";
+    revealAllBtn.type = "button";
+    revealAllBtn.className = "btn btn-outline-danger px-4 py-2 fw-semibold me-2";
+    revealAllBtn.textContent = "Reveal All";
+    nextRoundBtn.parentNode.insertBefore(revealAllBtn, nextRoundBtn);
   }
-  return array;
-}
 
-// Fills up the list of 33 seasons and shuffles them
-function resetDeck() {
-  unplayedIndices = seasonsData.map((_, index) => index);
-  shuffle(unplayedIndices);
-}
+  // ------------------------------------------------------------------------
+  // 3. HELPER FUNCTIONS: Shuffling, Normalization & Live Feedback
+  // ------------------------------------------------------------------------
 
-// Cleans up typed text: trims spaces, lowercases, and removes accents
-// Example: "  Mané  " becomes "mane" so spelling is fair and easy
-function normalizeString(str) {
-  return str ? str.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
-}
-
-// ------------------------------------------------------------------------------
-// 4. STARTING A ROUND
-// ------------------------------------------------------------------------------
-
-// Picks the next season and prepares the screen for the player
-function loadNextRandomSeason() {
-  // If we played through all 33 seasons, start fresh again
-  if (unplayedIndices.length === 0) resetDeck();
-
-  // Grab the next season from our shuffled deck
-  const nextIndex = unplayedIndices.pop();
-  currentRound = seasonsData[nextIndex];
-
-  // Reset round counters back to zero
-  revealedIndices.clear();
-  guessedSubmissions.clear();
-  hintedIndices.clear();
-  strikes = 0;
-
-  // Put the season year on the screen
-  if (seasonHeading) seasonHeading.textContent = currentRound.season;
-
-  // Refresh score text and clear old feedback messages
-  updateStatusDisplays();
-  clearFeedback();
-
-  // Re-enable typing in the input box
-  if (playerGuessInput) {
-    playerGuessInput.disabled = false;
-    playerGuessInput.value = "";
-    playerGuessInput.focus();
+  // Fisher-Yates Algorithm: Mathematically guarantees an unbiased random order
+  function shuffle(array) {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]]; // Swap elements
+    }
+    return arr;
   }
-  if (submitBtn) submitBtn.disabled = false;
 
-  // Show "Give Up" button and hide "Next Season" button
-  if (giveUpBtn) giveUpBtn.classList.remove("d-none");
-  if (nextSeasonBtn) nextSeasonBtn.classList.add("d-none");
+  // Text Sanitizer:
+  // Strips accents and punctuation so "Solskjær" matches "solskjaer",
+  // and "Mo Salah" or "Salah " matches "salah".
+  function sanitizeInput(str) {
+    return str
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")                 // Decomposes accented letters (e.g., 'é' -> 'e' + accent mark)
+      .replace(/[\u0300-\u036f]/g, "") // Removes the accent mark characters
+      .replace(/[^a-z0-9]/g, "");       // Removes all spaces, dashes, and special characters
+  }
 
-  // Draw the 5 blank cards on the screen
-  renderBlankSlots(currentRound.topScorers);
-}
+  // Updates the live feedback banner under the input form
+  function announceFeedback(message, statusClass = "feedback-warning") {
+    feedbackMsg.className = `py-2 mb-0 fw-bold ${statusClass}`;
+    feedbackMsg.textContent = message;
+    feedbackMsg.classList.remove("d-none");
+  }
 
-// Creates the 5 blank cards in HTML
-function renderBlankSlots(scorers) {
-  if (!slotsContainer) return;
-  slotsContainer.innerHTML = ""; // Empty out any old cards
+  // ------------------------------------------------------------------------
+  // 4. ROUND INITIALIZATION & RENDERING
+  // ------------------------------------------------------------------------
 
-  scorers.forEach((scorer, idx) => {
-    const col = document.createElement("div");
-    col.className = "col-12 col-md-6 col-lg-4";
-    col.innerHTML = `
-      <article class="slot-card p-3 d-flex align-items-center" id="slot-${idx}">
-        <span class="rank-badge rounded-circle d-flex align-items-center justify-content-center fw-bold me-3">
-          #${scorer.rank}
-        </span>
-        <div class="flex-grow-1 overflow-hidden">
-          <h3 class="h6 mb-1 text-white slot-name">???</h3>
-          <p class="text-light-subtle small mb-2 slot-meta">??? goals | ???</p>
-          <button type="button" class="btn btn-outline-info btn-sm py-0 px-2 hint-btn" data-index="${idx}">
-            Club Hint (-5 pts)
-          </button>
+  // First-time startup: validates that data.js loaded properly, then shuffles
+  function initGame() {
+    if (!Array.isArray(seasonsData) || seasonsData.length === 0) {
+      announceFeedback("Error: Season data failed to load.", "feedback-error");
+      return;
+    }
+    seasonQueue = shuffle(seasonsData);
+    loadSeason();
+  }
+
+  // Prepares a new round with the next random season
+  function loadSeason() {
+    // If we've played through all 34 seasons, reshuffle the full deck
+    if (seasonQueue.length === 0) {
+      seasonQueue = shuffle(seasonsData);
+    }
+
+    currentSeason = seasonQueue.pop(); // Take the next season from our queue
+    strikes.clear();                   // Reset strikes for the new round
+    updateDashboard();
+
+    // Create an active copy of the 5 cards to track solved states during the round
+    activeSlots = currentSeason.topScorers.map((slot) => ({
+      ...slot,
+      revealed: false,
+      hintUsed: false,
+      selectedPlayer: null
+    }));
+
+    // Update UI elements for the new season
+    seasonText.textContent = `${currentSeason.season} Season`;
+    feedbackMsg.classList.add("d-none");
+    if (nextRoundBtn) nextRoundBtn.classList.add("d-none");
+    if (revealAllBtn) revealAllBtn.classList.remove("d-none");
+
+    // Re-enable and focus the input form
+    guessInput.disabled = false;
+    submitBtn.disabled = false;
+    guessInput.value = "";
+    guessInput.focus();
+
+    renderCards();
+  }
+
+  // Builds and injects the 5 player cards into #slots-container
+  function renderCards() {
+    slotsContainer.innerHTML = ""; // Clear out previous cards
+
+    activeSlots.forEach((slot, index) => {
+      // Responsive column container (1 col on mobile, up to 5 on large screens)
+      const col = document.createElement("div");
+      col.className = "col-12 col-md-6 col-lg";
+
+      // The Card box matching style.css (.slot-card)
+      const card = document.createElement("div");
+      card.id = `card-${index}`;
+      card.className = "slot-card d-flex flex-column justify-content-between p-3 h-100";
+
+      card.innerHTML = `
+        <!-- Top row: Rank badge circle and goal count -->
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <div class="rank-badge rounded-circle d-flex align-items-center justify-content-center fw-bold">
+            #${slot.rank}
+          </div>
+          <span class="badge bg-dark border border-secondary text-light-subtle">${slot.goals} Goals</span>
         </div>
-      </article>
-    `;
-    slotsContainer.appendChild(col);
-  });
+        
+        <!-- Center content: Mystery question marks until guessed -->
+        <div class="card-content py-1">
+          <div class="player-name fw-bold text-light-subtle letter-spacing">? ? ? ? ?</div>
+          <div class="player-meta small text-muted"></div>
+        </div>
+        
+        <!-- Bottom row: Hint button or revealed club hint -->
+        <div class="hint-container d-flex align-items-center justify-content-between mt-2 pt-2 border-top border-secondary border-opacity-25">
+          <button type="button" class="btn btn-sm btn-outline-warning btn-hint" onclick="window.revealSlotHint(${index})">Hint (-5 pts)</button>
+          <span id="hint-text-${index}" class="small text-warning fw-semibold d-none"></span>
+        </div>
+      `;
 
-  // Listen for clicks on any of the "Club Hint" buttons
-  const hintButtons = slotsContainer.querySelectorAll(".hint-btn");
-  hintButtons.forEach((button) => {
-    button.addEventListener("click", handleHintClick);
-  });
-}
-
-// ------------------------------------------------------------------------------
-// 5. SCREEN UPDATES & MESSAGES
-// ------------------------------------------------------------------------------
-
-// Updates the top Score and Strikes numbers
-function updateStatusDisplays() {
-  if (scoreTracker) scoreTracker.textContent = `Score: ${currentScore}`;
-  if (strikesTracker) strikesTracker.textContent = `Strikes: ${strikes}/${MAX_STRIKES}`;
-}
-
-// Displays a message in Green (success), Red (error), or Gold (warning)
-function showFeedback(text, type) {
-  if (!feedbackMessage) return;
-  feedbackMessage.textContent = text;
-  feedbackMessage.className = `mt-2 small fw-medium feedback-${type}`;
-}
-
-// Clears the message line
-function clearFeedback() {
-  if (!feedbackMessage) return;
-  feedbackMessage.textContent = "";
-  feedbackMessage.className = "mt-2 small fw-medium";
-}
-
-// ------------------------------------------------------------------------------
-// 6. PLAYER ACTIONS (Hints and Guesses)
-// ------------------------------------------------------------------------------
-
-// Runs when you click "Club Hint" on a card
-function handleHintClick(event) {
-  const button = event.currentTarget;
-  const index = parseInt(button.getAttribute("data-index"), 10);
-  const player = currentRound.topScorers[index];
-  const slot = document.getElementById(`slot-${index}`);
-
-  // Do nothing if the card is already guessed
-  if (!slot || revealedIndices.has(index)) return;
-
-  // Mark that this card used a hint
-  hintedIndices.add(index);
-
-  // Show the player's club name on the card
-  const metaElement = slot.querySelector(".slot-meta");
-  if (metaElement) {
-    metaElement.textContent = `??? goals | Club: ${player.club}`;
+      col.appendChild(card);
+      slotsContainer.appendChild(col);
+    });
   }
 
-  // Turn button off so it can't be clicked twice
-  button.disabled = true;
-  button.textContent = "Hint Used";
-  button.className = "btn btn-secondary btn-sm py-0 px-2 hint-btn";
+  // ------------------------------------------------------------------------
+  // 5. HINT SYSTEM
+  // ------------------------------------------------------------------------
 
-  showFeedback(`Hint revealed for #${player.rank}! Correct guess awards 5 points instead of 10.`, "warning");
-}
+  // Reveals the player's club(s) when the Hint button on a card is pressed
+  window.revealSlotHint = function (index) {
+    const slot = activeSlots[index];
+    if (slot.revealed || slot.hintUsed) return; // Prevent clicking twice
 
-// Runs when you hit "Submit" or press Enter
-function handleGuessSubmit(event) {
-  event.preventDefault(); // Prevents page from reloading
-  const rawInput = playerGuessInput.value;
-  const sanitizedInput = normalizeString(rawInput);
+    slot.hintUsed = true; // Marks hint as used so it awards 5 pts instead of 10
+    const card = document.getElementById(`card-${index}`);
+    const hintBtn = card.querySelector(".btn-hint");
+    const hintText = document.getElementById(`hint-text-${index}`);
 
-  // Check 1: Did they leave the box empty?
-  if (!sanitizedInput) {
-    showFeedback("Please enter a player surname or full name.", "warning");
-    return;
-  }
+    // Hide button and show the club text
+    hintBtn.classList.add("d-none");
+    hintText.textContent = slot.isTied ? `Clubs: ${slot.club}` : `Club: ${slot.club}`;
+    hintText.classList.remove("d-none");
 
-  // Check 2: Did they already try this name?
-  if (guessedSubmissions.has(sanitizedInput)) {
-    showFeedback(`You already tried "${rawInput}".`, "warning");
-    playerGuessInput.value = "";
-    return;
-  }
+    announceFeedback(`Hint for #${slot.rank}: ${hintText.textContent}`, "feedback-warning");
+  };
 
-  // Remember this guess so they can't spam it
-  guessedSubmissions.add(sanitizedInput);
-  const activeScorers = currentRound.topScorers;
-  let matchFound = false;
+  // ------------------------------------------------------------------------
+  // 6. GUESS PROCESSING & CARD MATCHING LOGIC
+  // ------------------------------------------------------------------------
 
-  // Check the guess against all 5 players
-  activeScorers.forEach((player, index) => {
-    const normalizedName = normalizeString(player.name);
-    const normalizedAliases = player.aliases.map((a) => normalizeString(a));
-    const surnameOnly = normalizeString(player.name.split(" ").slice(-1)[0]);
+  function processGuess(e) {
+    e.preventDefault(); // Prevents page reload on form submit
+    const rawInput = guessInput.value;
+    const cleanGuess = sanitizeInput(rawInput);
 
-    // Matches if input is full name, surname, or nickname alias
-    if (
-      sanitizedInput === normalizedName ||
-      normalizedAliases.includes(sanitizedInput) ||
-      sanitizedInput === surnameOnly
-    ) {
-      matchFound = true;
-      if (revealedIndices.has(index)) {
-        showFeedback(`You already found ${player.name}!`, "warning");
+    if (!cleanGuess) return;
+    guessInput.value = ""; // Clear input for next guess
+
+    let matchedIndex = -1;
+    let winningPlayer = null;
+
+    // Loop through the 5 cards to see if any unsolved card matches the guess
+    for (let i = 0; i < activeSlots.length; i++) {
+      const slot = activeSlots[i];
+      if (slot.revealed) continue; // Skip already solved cards
+
+      if (slot.isTied) {
+        // CARD #5 TIE LOGIC: Look inside the tiedOptions array
+        const found = slot.tiedOptions.find((candidate) => {
+          const nameMatch = sanitizeInput(candidate.name) === cleanGuess;
+          const aliasMatch = candidate.aliases.some((alias) => sanitizeInput(alias) === cleanGuess);
+          return nameMatch || aliasMatch;
+        });
+
+        if (found) {
+          // Verify this specific player hasn't already been claimed
+          const alreadyClaimed = activeSlots.some(
+            (s) => s.revealed && s.selectedPlayer && s.selectedPlayer.name === found.name
+          );
+
+          if (!alreadyClaimed) {
+            matchedIndex = i;
+            winningPlayer = found;
+            break;
+          }
+        }
       } else {
-        // Correct guess! Turn card green
-        revealSlot(index, player, "revealed");
-        revealedIndices.add(index);
+        // STANDARD CARD LOGIC: Check single player name and aliases
+        const nameMatch = sanitizeInput(slot.name) === cleanGuess;
+        const aliasMatch = slot.aliases.some((alias) => sanitizeInput(alias) === cleanGuess);
 
-        // Give 10 points (or 5 points if hint was used)
-        const points = hintedIndices.has(index) ? 5 : 10;
-        currentScore += points;
-
-        showFeedback(`Spot on! ${player.name} finished #${player.rank} with ${player.goals} goals. (+${points} pts)`, "success");
+        if (nameMatch || aliasMatch) {
+          matchedIndex = i;
+          winningPlayer = slot;
+          break;
+        }
       }
     }
-  });
 
-  // If name didn't match anyone in the top 5, give a strike
-  if (!matchFound) {
-    strikes += 1;
-    showFeedback(`Incorrect: "${rawInput}" wasn't in the top 5 this season.`, "error");
-  }
-
-  // Refresh scoreboard numbers and clear the text input
-  updateStatusDisplays();
-  playerGuessInput.value = "";
-
-  // Check if you won (all 5 guessed) or lost (3 strikes)
-  if (revealedIndices.size === activeScorers.length) {
-    endRound(true);  // Clean sweep win!
-  } else if (strikes >= MAX_STRIKES) {
-    endRound(false); // Out of strikes
-  }
-}
-
-// Changes a card from hidden to green (revealed) or red (missed)
-function revealSlot(index, player, statusClass) {
-  const slot = document.getElementById(`slot-${index}`);
-  if (!slot) return;
-
-  slot.classList.remove("revealed", "missed");
-  slot.classList.add(statusClass);
-
-  const nameElement = slot.querySelector(".slot-name");
-  const metaElement = slot.querySelector(".slot-meta");
-  const hintBtn = slot.querySelector(".hint-btn");
-
-  if (nameElement) nameElement.textContent = player.name;
-  if (metaElement) metaElement.textContent = `${player.goals} goals | ${player.club}`;
-  if (hintBtn) hintBtn.remove(); // Remove hint button once revealed
-}
-
-// Ends the round, reveals missed players, and shows the Next Season button
-function endRound(isCleanSweep) {
-  // Lock the input box so you can't type anymore
-  if (playerGuessInput) playerGuessInput.disabled = true;
-  if (submitBtn) submitBtn.disabled = true;
-
-  // Swap "Give up" button for "Next Season" button
-  if (giveUpBtn) giveUpBtn.classList.add("d-none");
-  if (nextSeasonBtn) nextSeasonBtn.classList.remove("d-none");
-
-  // Remove any remaining hint buttons
-  const activeHintButtons = slotsContainer.querySelectorAll(".hint-btn");
-  activeHintButtons.forEach((btn) => btn.remove());
-
-  // Show any unguessed players in RED so the player learns the answers
-  const activeScorers = currentRound.topScorers;
-  activeScorers.forEach((player, index) => {
-    if (!revealedIndices.has(index)) {
-      revealSlot(index, player, "missed");
+    // Deliver verdict: correct guess or strike
+    if (matchedIndex !== -1) {
+      revealSuccess(matchedIndex, winningPlayer);
+    } else {
+      handleStrike(rawInput, cleanGuess);
     }
-  });
-
-  // Give +25 bonus points if all 5 were guessed
-  if (isCleanSweep) {
-    currentScore += 25;
-    updateStatusDisplays();
-    showFeedback("Masterclass! Clean sweep bonus (+25 points)!", "success");
-  } else {
-    showFeedback("Round over! The remaining scorers have been revealed in red.", "error");
   }
-}
 
-// ------------------------------------------------------------------------------
-// 7. LISTEN FOR EVENTS & START GAME
-// ------------------------------------------------------------------------------
-// When form is submitted -> run handleGuessSubmit
-if (guessForm) guessForm.addEventListener("submit", handleGuessSubmit);
+  // Handles correct answers: awards points and turns card green
+  function revealSuccess(index, player) {
+    const slot = activeSlots[index];
+    slot.revealed = true;
+    slot.selectedPlayer = player;
 
-// When "Reveal Remaining" is clicked -> end round early
-if (giveUpBtn) giveUpBtn.addEventListener("click", () => endRound(false));
+    // 10 points base, 5 points if hint was already used
+    const pointsAwarded = slot.hintUsed ? 5 : 10;
+    score += pointsAwarded;
 
-// When "Next Season" is clicked -> start fresh round
-if (nextSeasonBtn) nextSeasonBtn.addEventListener("click", loadNextRandomSeason);
+    // Turn card neon-green using .revealed class from style.css
+    const card = document.getElementById(`card-${index}`);
+    card.classList.add("revealed");
 
-// Start the game right when the page loads
-resetDeck();
-loadNextRandomSeason();
+    // Display revealed player's name and club
+    const nameEl = card.querySelector(".player-name");
+    nameEl.textContent = player.name;
+    nameEl.className = "player-name fw-bold text-light";
+
+    const metaEl = card.querySelector(".player-meta");
+    metaEl.textContent = player.club;
+
+    // Replace hint area with point confirmation badge
+    const hintContainer = card.querySelector(".hint-container");
+    hintContainer.innerHTML = `<span class="badge bg-success bg-opacity-25 text-success border border-success py-1 px-2">+${pointsAwarded} pts</span>`;
+
+    updateDashboard();
+    announceFeedback(`Correct! ${player.name} (+${pointsAwarded} pts)`, "feedback-success");
+
+    checkRoundState();
+  }
+
+  // Handles wrong answers: checks for duplicates and counts strikes
+  function handleStrike(rawName, cleanGuess) {
+    // If the user already guessed this name previously, do not penalize twice
+    if (strikes.has(cleanGuess)) {
+      announceFeedback(`You already tried "${rawName}".`, "feedback-warning");
+      return;
+    }
+
+    strikes.add(cleanGuess);
+    updateDashboard();
+
+    if (strikes.size >= MAX_STRIKES) {
+      endRound(false); // 3 strikes reached: round over
+    } else {
+      announceFeedback(`"${rawName}" is incorrect! Strike ${strikes.size} of ${MAX_STRIKES}`, "feedback-error");
+    }
+  }
+
+  // ------------------------------------------------------------------------
+  // 7. ROUND TRANSITIONS & GAME OVER
+  // ------------------------------------------------------------------------
+
+  // Checks if all 5 cards have been successfully solved
+  function checkRoundState() {
+    const allSolved = activeSlots.every((slot) => slot.revealed);
+    if (allSolved) {
+      const sweepBonus = 25; // Clean sweep bonus for solving all 5
+      score += sweepBonus;
+      updateDashboard();
+      endRound(true, sweepBonus);
+    }
+  }
+
+  // Ends the round, disables input, and shows the Next Season button
+  function endRound(isSuccess, sweepBonus = 0) {
+    guessInput.disabled = true;
+    submitBtn.disabled = true;
+
+    if (revealAllBtn) revealAllBtn.classList.add("d-none");
+
+    if (isSuccess) {
+      announceFeedback(`Round Complete! Clean sweep bonus (+${sweepBonus} pts)!`, "feedback-success");
+    } else {
+      announceFeedback(`Round over! Revealing remaining scorers.`, "feedback-error");
+      revealRemainingCards();
+    }
+
+    if (nextRoundBtn) {
+      nextRoundBtn.classList.remove("d-none");
+      nextRoundBtn.focus();
+    }
+  }
+
+  // Reveals any unsolved cards in red (.missed) when round ends
+  function revealRemainingCards() {
+    activeSlots.forEach((slot, index) => {
+      if (!slot.revealed) {
+        const card = document.getElementById(`card-${index}`);
+        card.classList.add("missed");
+
+        // If it was a Card #5 tie, show all eligible names separated by a slash
+        const displayName = slot.isTied
+          ? slot.tiedOptions.map((o) => o.name).join(" / ")
+          : slot.name;
+
+        const nameEl = card.querySelector(".player-name");
+        nameEl.textContent = displayName;
+        nameEl.className = "player-name fw-bold text-light";
+
+        const metaEl = card.querySelector(".player-meta");
+        metaEl.textContent = slot.club;
+
+        const hintContainer = card.querySelector(".hint-container");
+        hintContainer.innerHTML = `<span class="badge bg-danger bg-opacity-25 text-danger border border-danger">Missed</span>`;
+      }
+    });
+  }
+
+  // Synchronizes visual numbers with current state values
+  function updateDashboard() {
+    if (scoreDisplay) scoreDisplay.textContent = score;
+    if (strikeDisplay) strikeDisplay.textContent = `${strikes.size} / ${MAX_STRIKES}`;
+    if (roundDisplay) roundDisplay.textContent = roundNumber;
+  }
+
+  // ------------------------------------------------------------------------
+  // 8. EVENT LISTENERS
+  // ------------------------------------------------------------------------
+
+  // Form submission (typing a name and pressing enter or clicking 'Guess')
+  guessForm.addEventListener("submit", processGuess);
+
+  // 'Reveal All' button click: forfeits current round
+  if (revealAllBtn) {
+    revealAllBtn.addEventListener("click", () => {
+      endRound(false);
+    });
+  }
+
+  // 'Next Season' button click: advances round number and draws new season
+  if (nextRoundBtn) {
+    nextRoundBtn.addEventListener("click", () => {
+      roundNumber += 1;
+      loadSeason();
+    });
+  }
+
+  // Run initial game setup when DOM is ready
+  initGame();
+});
