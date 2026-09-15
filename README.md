@@ -204,5 +204,33 @@ This creates a total for every player across all seasons, then sorts the totals 
 
 ![Testing SC2](image-1.png)
 
+### Lighthouse Audits
+
+Google Lighthouse audits were conducted on the live deployed application across Desktop and Mobile environments to verify Core Web Vitals, accessibility, technical best practices, and search discoverability.
+
+| Environment | Performance | Accessibility | Best Practices | SEO | Report |
+| :--- | :---: | :---: | :---: | :---: | :--- |
+| **Desktop** | 100 | 95 | 100 | 90 | [View Full PDF](lighthouse%20desktop.pdf) |
+| **Mobile** | 98 | 95 | 100 | 90 | [View Full PDF](lighthouse%20mobile.pdf) |
+
+#### Desktop Summary
+- **First Contentful Paint (FCP):** 0.7 s
+- **Largest Contentful Paint (LCP):** 0.7 s
+- **Total Blocking Time (TBT):** 0 ms
+- **Cumulative Layout Shift (CLS):** 0.011
+- **Speed Index:** 0.7 s
+
+#### Mobile Summary (Emulated Moto G Power / Slow 4G)
+- **First Contentful Paint (FCP):** 2.0 s
+- **Largest Contentful Paint (LCP):** 2.0 s
+- **Total Blocking Time (TBT):** 0 ms
+- **Cumulative Layout Shift (CLS):** 0.021
+- **Speed Index:** 2.0 s
+
+#### Audit Insights & Observations
+- **Accessibility (95):** Passed 20 automated checks with high compliance. Flagged an advisory regarding foreground-to-background contrast ratios on select card elements.
+- **SEO (90):** Flagged a missing meta description tag in the HTML head, which can be included in future updates without structural code changes.
+- **Runtime & Stability:** The site scored 100 in Best Practices with 0 ms Total Blocking Time across both audits, confirming no main-thread freezing or heavy script overhead.
+
 ## Notes
 This build is a static front-end game and does not require a backend or database setup. It is built to be accessible and easy to use on any device, regardless of screen size.
