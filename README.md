@@ -2,6 +2,26 @@
 
 A lightweight browser game where players try to recall the top 5 goalscorers from a random Premier League season. The game is built with plain HTML, CSS, and JavaScript and runs directly in the browser on desktop, tablet, and mobile devices.
 
+## Contents
+- [What the game does](#what-the-game-does)
+- [Basic user case scenarios](#basic-user-case-scenarios)
+- [How to run](#how-to-run)
+- [How Our Team Used AI in This Project](#how-our-team-used-ai-in-this-project)
+	- [Helping Us Build the Project](#1-helping-us-build-the-project)
+	- [Fixing Bugs & Learning Along the Way](#2-fixing-bugs--learning-along-the-way)
+	- [Improving How the Game Looks and Plays](#3-improving-how-the-game-looks-and-plays)
+	- [What We Learned as a Team](#4-what-we-learned-as-a-team)
+- [Basic wireframes](#basic-wireframes)
+	- [Main game screen](#main-game-screen)
+	- [Individual slot card](#individual-slot-card)
+	- [End of round state](#end-of-round-state)
+- [Why we split the JavaScript into a data file and script file](#why-we-split-the-javascript-into-a-data-file-and-script-file)
+	- [Advantages of this approach](#advantages-of-this-approach)
+	- [What could go wrong if we did not separate them](#what-could-go-wrong-if-we-did-not-separate-them)
+	- [Developing an overall top scorer for every year](#developing-an-overall-top-scorer-for-every-year)
+- [Project stack](#project-stack)
+- [Notes](#notes)
+
 ## What the game does
 - Shows a random Premier League season
 - Challenges the player to guess the top 5 goalscorers
@@ -35,6 +55,13 @@ A football fan uses the game as a quick memory exercise for seasons such as 2011
 3. Open the index.html file to start the game.
 
 The app is designed to be responsive, so it can be played on a laptop, tablet, or mobile phone without needing a separate version for each device.
+
+## Different Screen Views
+-Mobile Screen view
+![Mobile Screen](image-2.png)
+
+-Desktop Screen view 
+![Desktop Screen](image-3.png)
 
 ## How Our Team Used AI in This Project
 
@@ -135,11 +162,47 @@ If all the data and logic were placed in one JavaScript file, the project could 
 
 In a larger project, keeping data separate also helps with version control and collaboration, because one developer can update the dataset while another works on the game engine without creating unnecessary conflicts.
 
+### Developing an overall top scorer for every year
+The information already stored in `data.js` can also be used to find the overall top scorer across all of the seasons. We could loop through `seasonsData`, examine each season's `topScorers`, and add each player's goals to a total. For normal entries, the player's `name` and `goals` can be read directly. For a tied fifth-place entry, the players are stored inside `tiedOptions`, so the code would need to add the same `goals` value to each eligible player.
+
+For example, `script.js` could use a function like this:
+
+```js
+function getOverallTopScorers() {
+	const playerTotals = {};
+
+	seasonsData.forEach((season) => {
+		season.topScorers.forEach((scorer) => {
+			const players = scorer.isTied ? scorer.tiedOptions : [scorer];
+
+			players.forEach((player) => {
+				playerTotals[player.name] = (playerTotals[player.name] || 0) + scorer.goals;
+			});
+		});
+	});
+
+	return Object.entries(playerTotals)
+		.map(([name, goals]) => ({ name, goals }))
+		.sort((firstPlayer, secondPlayer) => secondPlayer.goals - firstPlayer.goals);
+}
+
+const overallTopScorers = getOverallTopScorers();
+console.log(overallTopScorers);
+```
+
+This creates a total for every player across all seasons, then sorts the totals from highest to lowest. The first item in the returned array would be the overall top scorer, while the rest could be displayed as a leaderboard. If two players have the same total, the interface could show both players as joint top scorers by filtering for everyone whose total matches the highest total. This approach reuses the existing data and means that adding another season to `data.js` automatically includes it in the calculation.
+
 ## Project stack
 - HTML
 - CSS
 - JavaScript
 - Bootstrap 5
+
+## Code Testing
+![Testing SC1](image.png)
+
+
+![Testing SC2](image-1.png)
 
 ## Notes
 This build is a static front-end game and does not require a backend or database setup. It is built to be accessible and easy to use on any device, regardless of screen size.
